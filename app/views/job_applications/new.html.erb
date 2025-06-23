@@ -1,0 +1,54 @@
+<div class="container py-8">
+  <div class="max-w-2xl mx-auto">
+    <h1>New Job Application</h1>
+
+    <%= form_with(model: @job_application, local: true) do |form| %>
+      <% if @job_application.errors.any? %>
+        <div class="alert alert-error">
+          <h2 class="font-bold mb-2">
+            <%= pluralize(@job_application.errors.count, "error") %> prohibited this job application from being saved:
+          </h2>
+          <ul class="list-disc list-inside">
+            <% @job_application.errors.full_messages.each do |message| %>
+              <li><%= message %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div class="form-group">
+        <%= form.label :date_applied, class: "form-label" %>
+        <%= form.date_field :date_applied, class: "form-input" %>
+      </div>
+
+      <div class="form-group">
+        <%= form.label :company_name, class: "form-label" %>
+        <%= form.text_field :company_name, class: "form-input" %>
+      </div>
+
+      <div class="form-group">
+        <%= form.label :job_link, class: "form-label" %>
+        <%= form.url_field :job_link, class: "form-input" %>
+      </div>
+
+      <div class="form-group">
+        <%= form.label :tech_stack_names, "Tech Stacks (comma separated)", class: "form-label" %>
+        <%= form.text_field :tech_stack_names, class: "form-input", placeholder: "e.g., Ruby on Rails, React, PostgreSQL" %>
+        <p class="text-sm text-gray-500 mt-2">Enter tech stacks separated by commas</p>
+      </div>
+
+      <div class="form-group">
+        <%= form.label :application_status_id, "Status", class: "form-label" %>
+        <%= form.select :application_status_id, 
+            options_from_collection_for_select(@application_statuses, :id, :name, @job_application.application_status_id),
+            { prompt: "Select status" },
+            { class: "form-select" } %>
+      </div>
+
+      <div class="flex space-x-2">
+        <%= form.submit "Create Job Application", class: "btn btn-primary" %>
+        <%= link_to "Cancel", job_applications_path, class: "btn btn-secondary" %>
+      </div>
+    <% end %>
+  </div>
+</div> 

@@ -1,0 +1,418 @@
+<div class="container py-8">
+  <div class="flex-between mb-6">
+    <h1>Application Tracking System</h1>
+    <%= link_to new_job_application_path, class: "btn btn-primary" do %>
+      Add Application
+    <% end %>
+  </div>
+
+  <% if notice %>
+    <div class="alert alert-success">
+      <%= notice %>
+    </div>
+  <% end %>
+
+  <div class="table-container">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Date Applied</th>
+          <th>Company Name</th>
+          <th>Job Link</th>
+          <th>Tech Stacks</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @job_applications.each do |app| %>
+          <tr data-id="<%= app.id %>">
+            <td>
+              <%= app.date_applied&.strftime("%Y-%m-%d") %>
+            </td>
+            <td>
+              <%= app.company_name %>
+            </td>
+            <td>
+              <%= link_to "View Job", app.job_link, target: "_blank" %>
+            </td>
+            <td>
+              <div class="tech-stacks-container" data-app-id="<%= app.id %>">
+                <div class="tech-stacks-display">
+                  <% app.tech_stacks.each do |tech| %>
+                    <span class="tech-tag">
+                      <%= tech.name %>
+                    </span>
+                  <% end %>
+                </div>
+                <select class="tech-stacks-select hidden form-select" multiple>
+                  <% @tech_stacks.each do |tech| %>
+                    <option value="<%= tech.name %>" <%= 'selected' if app.tech_stacks.include?(tech) %>>
+                      <%= tech.name %>
+                    </option>
+                  <% end %>
+                  <option value="__new__">+ Add New Tech Stack</option>
+                </select>
+              </div>
+            </td>
+            <td>
+              <div class="status-container" data-app-id="<%= app.id %>">
+                <div class="status-display">
+                  <span class="status-badge">
+                    <%= app.application_status.name %>
+                  </span>
+                </div>
+                <select class="status-select hidden form-select">
+                  <% @application_statuses.each do |status| %>
+                    <option value="<%= status.id %>" <%= 'selected' if app.application_status == status %>>
+                      <%= status.name %>
+                    </option>
+                  <% end %>
+                  <option value="__new__">+ Add New Status</option>
+                </select>
+              </div>
+            </td>
+            <td>
+              <div class="space-x-2">
+                <button class="edit-row">Edit</button>
+                <button class="save-row hidden">Save</button>
+                <button class="cancel-row hidden">Cancel</button>
+                <%= link_to "Delete", job_application_path(app), method: :delete, 
+                    data: { confirm: "Are you sure?" }, 
+                    class: "btn-danger" %>
+              </div>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal for adding new status -->
+<div id="new-status-modal" class="modal hidden">
+  <div class="modal-content">
+    <h3>Add New Status</h3>
+    <input type="text" id="new-status-name" placeholder="Enter status name" class="form-input">
+    <div class="flex space-x-2">
+      <button id="cancel-new-status" class="btn btn-secondary">Cancel</button>
+      <button id="save-new-status" class="btn btn-primary">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal for adding new tech stack -->
+<div id="new-tech-stack-modal" class="modal hidden">
+  <div class="modal-content">
+    <h3>Add New Tech Stack</h3>
+    <input type="text" id="new-tech-stack-name" placeholder="Enter tech stack name" class="form-input">
+    <div class="flex space-x-2">
+      <button id="cancel-new-tech-stack" class="btn btn-secondary">Cancel</button>
+      <button id="save-new-tech-stack" class="btn btn-primary">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Edit row functionality
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('edit-row')) {
+      editRow(e.target.closest('tr'))
+    } else if (e.target.classList.contains('save-row')) {
+      saveRow(e.target.closest('tr'))
+    } else if (e.target.classList.contains('cancel-row')) {
+      cancelRow(e.target.closest('tr'))
+    }
+  })
+
+  // Status select change
+  document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('status-select')) {
+      if (e.target.value === '__new__') {
+        showNewStatusModal()
+      }
+    } else if (e.target.classList.contains('tech-stacks-select')) {
+      if (e.target.value === '__new__') {
+        showNewTechStackModal()
+      }
+    }
+  })
+
+  // Modal event listeners
+  setupModalListeners()
+
+  function editRow(row) {
+    const appId = row.dataset.id
+    
+    // Show edit mode
+    row.querySelector('.edit-row').classList.add('hidden')
+    row.querySelector('.save-row').classList.remove('hidden')
+    row.querySelector('.cancel-row').classList.remove('hidden')
+    
+    // Show dropdowns
+    row.querySelector('.status-display').classList.add('hidden')
+    row.querySelector('.status-select').classList.remove('hidden')
+    
+    row.querySelector('.tech-stacks-display').classList.add('hidden')
+    row.querySelector('.tech-stacks-select').classList.remove('hidden')
+    
+    // Store original values for cancel
+    row.dataset.originalStatus = row.querySelector('.status-select').value
+    row.dataset.originalTechStacks = Array.from(row.querySelector('.tech-stacks-select').selectedOptions).map(opt => opt.value).join(',')
+  }
+
+  function saveRow(row) {
+    const appId = row.dataset.id
+    const statusId = row.querySelector('.status-select').value
+    const techStacks = Array.from(row.querySelector('.tech-stacks-select').selectedOptions)
+      .filter(opt => opt.value !== '__new__')
+      .map(opt => opt.value)
+      .join(', ')
+
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                     document.querySelector('[name="csrf-token"]')?.content
+
+    if (!csrfToken) {
+      alert('CSRF token not found. Please refresh the page and try again.')
+      return
+    }
+
+    // Send AJAX request to update
+    fetch(`/job_applications/${appId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        job_application: {
+          application_status_id: statusId,
+          tech_stack_names: techStacks
+        }
+      })
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      return response.json()
+    })
+    .then(data => {
+      if (data.success) {
+        exitEditMode(row)
+        // Reload page to show updated data
+        window.location.reload()
+      } else {
+        alert('Error updating application: ' + (data.error || 'Unknown error'))
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error)
+      alert('Error updating application: ' + error.message)
+    })
+  }
+
+  function cancelRow(row) {
+    // Restore original values
+    row.querySelector('.status-select').value = row.dataset.originalStatus
+    row.querySelector('.tech-stacks-select').value = row.dataset.originalTechStacks
+    
+    exitEditMode(row)
+  }
+
+  function exitEditMode(row) {
+    // Hide edit mode
+    row.querySelector('.edit-row').classList.remove('hidden')
+    row.querySelector('.save-row').classList.add('hidden')
+    row.querySelector('.cancel-row').classList.add('hidden')
+    
+    // Hide dropdowns
+    row.querySelector('.status-display').classList.remove('hidden')
+    row.querySelector('.status-select').classList.add('hidden')
+    
+    row.querySelector('.tech-stacks-display').classList.remove('hidden')
+    row.querySelector('.tech-stacks-select').classList.add('hidden')
+  }
+
+  function showNewStatusModal() {
+    document.getElementById('new-status-modal').classList.remove('hidden')
+    document.getElementById('new-status-name').focus()
+  }
+
+  function showNewTechStackModal() {
+    document.getElementById('new-tech-stack-modal').classList.remove('hidden')
+    document.getElementById('new-tech-stack-name').focus()
+  }
+
+  function setupModalListeners() {
+    // New status modal
+    document.getElementById('save-new-status').addEventListener('click', function() {
+      const name = document.getElementById('new-status-name').value.trim()
+      if (name) {
+        createNewStatus(name)
+      }
+    })
+
+    document.getElementById('cancel-new-status').addEventListener('click', function() {
+      document.getElementById('new-status-modal').classList.add('hidden')
+      document.getElementById('new-status-name').value = ''
+    })
+
+    // New tech stack modal
+    document.getElementById('save-new-tech-stack').addEventListener('click', function() {
+      const name = document.getElementById('new-tech-stack-name').value.trim()
+      if (name) {
+        createNewTechStack(name)
+      }
+    })
+
+    document.getElementById('cancel-new-tech-stack').addEventListener('click', function() {
+      document.getElementById('new-tech-stack-modal').classList.add('hidden')
+      document.getElementById('new-tech-stack-name').value = ''
+    })
+
+    // Close modals on outside click
+    document.getElementById('new-status-modal').addEventListener('click', function(e) {
+      if (e.target.id === 'new-status-modal') {
+        document.getElementById('new-status-modal').classList.add('hidden')
+      }
+    })
+
+    document.getElementById('new-tech-stack-modal').addEventListener('click', function(e) {
+      if (e.target.id === 'new-tech-stack-modal') {
+        document.getElementById('new-tech-stack-modal').classList.add('hidden')
+      }
+    })
+  }
+
+  function createNewStatus(name) {
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                     document.querySelector('[name="csrf-token"]')?.content
+
+    if (!csrfToken) {
+      alert('CSRF token not found. Please refresh the page and try again.')
+      return
+    }
+
+    fetch('/job_applications/create_status', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ name: name })
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      return response.json()
+    })
+    .then(data => {
+      if (data.id) {
+        // Add to all status selects
+        const statusSelects = document.querySelectorAll('.status-select')
+        statusSelects.forEach(select => {
+          // Remove the "+ Add New Status" option temporarily
+          const addNewOption = select.querySelector('option[value="__new__"]')
+          if (addNewOption) {
+            addNewOption.remove()
+          }
+          
+          // Add the new status option
+          const option = new Option(data.name, data.id)
+          select.add(option)
+          
+          // Re-add the "+ Add New Status" option at the bottom
+          const newAddNewOption = new Option('+ Add New Status', '__new__')
+          select.add(newAddNewOption)
+        })
+        
+        document.getElementById('new-status-modal').classList.add('hidden')
+        document.getElementById('new-status-name').value = ''
+        
+        // Set the new status as selected in the current row
+        const currentRow = document.querySelector('.status-select:not(.hidden)').closest('tr')
+        if (currentRow) {
+          currentRow.querySelector('.status-select').value = data.id
+        }
+      } else {
+        alert('Error creating status: ' + (data.error || 'Unknown error'))
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error)
+      alert('Error creating status: ' + error.message)
+    })
+  }
+
+  function createNewTechStack(name) {
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                     document.querySelector('[name="csrf-token"]')?.content
+
+    if (!csrfToken) {
+      alert('CSRF token not found. Please refresh the page and try again.')
+      return
+    }
+
+    fetch('/job_applications/create_tech_stack', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ name: name })
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      return response.json()
+    })
+    .then(data => {
+      if (data.id) {
+        // Add to all tech stack selects
+        const techStackSelects = document.querySelectorAll('.tech-stacks-select')
+        techStackSelects.forEach(select => {
+          // Remove the "+ Add New Tech Stack" option temporarily
+          const addNewOption = select.querySelector('option[value="__new__"]')
+          if (addNewOption) {
+            addNewOption.remove()
+          }
+          
+          // Add the new tech stack option
+          const option = new Option(data.name, data.name)
+          select.add(option)
+          
+          // Re-add the "+ Add New Tech Stack" option at the bottom
+          const newAddNewOption = new Option('+ Add New Tech Stack', '__new__')
+          select.add(newAddNewOption)
+        })
+        
+        document.getElementById('new-tech-stack-modal').classList.add('hidden')
+        document.getElementById('new-tech-stack-name').value = ''
+        
+        // Set the new tech stack as selected in the current row
+        const currentRow = document.querySelector('.tech-stacks-select:not(.hidden)').closest('tr')
+        if (currentRow) {
+          const select = currentRow.querySelector('.tech-stacks-select')
+          select.value = data.name
+        }
+      } else {
+        alert('Error creating tech stack: ' + (data.error || 'Unknown error'))
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error)
+      alert('Error creating tech stack: ' + error.message)
+    })
+  }
+})
+</script> 
