@@ -22,7 +22,7 @@
       <div>
         <h3>Job Link</h3>
         <p>
-          <%= link_to @job_application.job_link, @job_application.job_link, target: "_blank" %>
+          <%= link_to "View Job", @job_application.job_link, target: "_blank", rel: "noopener noreferrer" %>
         </p>
       </div>
 
