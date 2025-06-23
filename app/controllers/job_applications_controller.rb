@@ -1,5 +1,5 @@
 class JobApplicationsController < ApplicationController
-  before_action :set_job_application, only: [:show, :edit, :update, :destroy]
+  before_action :set_job_application, only: [ :show, :edit, :update, :destroy ]
 
   def index
     @job_applications = JobApplication.includes(:application_status, :tech_stacks).ordered
@@ -19,7 +19,7 @@ class JobApplicationsController < ApplicationController
   def create
     @job_application = JobApplication.new(job_application_params)
     if @job_application.save
-      redirect_to job_applications_path, notice: 'Job application was successfully created.'
+      redirect_to job_applications_path, notice: "Job application was successfully created."
     else
       @application_statuses = ApplicationStatus.ordered
       @tech_stacks = TechStack.order(:name)
@@ -35,8 +35,8 @@ class JobApplicationsController < ApplicationController
   def update
     if @job_application.update(job_application_params)
       respond_to do |format|
-        format.html { redirect_to job_applications_path, notice: 'Job application was successfully updated.' }
-        format.json { render json: { success: true, message: 'Job application was successfully updated.' } }
+        format.html { redirect_to job_applications_path, notice: "Job application was successfully updated." }
+        format.json { render json: { success: true, message: "Job application was successfully updated." } }
       end
     else
       respond_to do |format|
@@ -45,14 +45,14 @@ class JobApplicationsController < ApplicationController
           @tech_stacks = TechStack.order(:name)
           render :edit, status: :unprocessable_entity
         end
-        format.json { render json: { success: false, error: @job_application.errors.full_messages.join(', ') }, status: :unprocessable_entity }
+        format.json { render json: { success: false, error: @job_application.errors.full_messages.join(", ") }, status: :unprocessable_entity }
       end
     end
   end
 
   def destroy
     @job_application.destroy
-    redirect_to job_applications_path, notice: 'Job application was successfully deleted.'
+    redirect_to job_applications_path, notice: "Job application was successfully deleted."
   end
 
   # AJAX endpoints for managing statuses and tech stacks
@@ -61,7 +61,7 @@ class JobApplicationsController < ApplicationController
     if @status.save
       render json: { id: @status.id, name: @status.name }
     else
-      render json: { error: @status.errors.full_messages.join(', ') }, status: :unprocessable_entity
+      render json: { error: @status.errors.full_messages.join(", ") }, status: :unprocessable_entity
     end
   end
 
@@ -70,7 +70,7 @@ class JobApplicationsController < ApplicationController
     if @tech_stack.save
       render json: { id: @tech_stack.id, name: @tech_stack.name }
     else
-      render json: { error: @tech_stack.errors.full_messages.join(', ') }, status: :unprocessable_entity
+      render json: { error: @tech_stack.errors.full_messages.join(", ") }, status: :unprocessable_entity
     end
   end
 
@@ -83,4 +83,4 @@ class JobApplicationsController < ApplicationController
   def job_application_params
     params.require(:job_application).permit(:date_applied, :company_name, :job_link, :tech_stack_names, :application_status_id)
   end
-end 
+end
