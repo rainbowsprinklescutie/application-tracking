@@ -34,7 +34,12 @@
               <%= app.company_name %>
             </td>
             <td>
-              <%= link_to "View Job", app.job_link, target: "_blank" %>
+              <% safe_url = safe_job_link(app) %>
+              <% if safe_url.present? %>
+                <%= link_to "View Job", safe_url, target: "_blank", rel: "noopener noreferrer" %>
+              <% else %>
+                <span class="text-gray-500">No valid link</span>
+              <% end %>
             </td>
             <td>
               <div class="tech-stacks-container" data-app-id="<%= app.id %>">
