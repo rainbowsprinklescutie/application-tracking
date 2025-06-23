@@ -51,8 +51,17 @@ class JobApplicationsController < ApplicationController
   end
 
   def destroy
-    @job_application.destroy
-    redirect_to job_applications_path, notice: "Job application was successfully deleted."
+    if @job_application.destroy
+      respond_to do |format|
+        format.html { redirect_to job_applications_path, notice: "Job application was successfully deleted." }
+        format.json { render json: { success: true, message: "Job application was successfully deleted." } }
+      end
+    else
+      respond_to do |format|
+        format.html { redirect_to job_applications_path, alert: "Failed to delete job application." }
+        format.json { render json: { success: false, error: "Failed to delete job application." }, status: :unprocessable_entity }
+      end
+    end
   end
 
   # AJAX endpoints for managing statuses and tech stacks

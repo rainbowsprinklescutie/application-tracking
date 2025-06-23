@@ -25,66 +25,77 @@
         </tr>
       </thead>
       <tbody>
-        <% @job_applications.each do |app| %>
-          <tr data-id="<%= app.id %>">
-            <td>
-              <%= app.date_applied&.strftime("%Y-%m-%d") %>
-            </td>
-            <td>
-              <%= app.company_name %>
-            </td>
-            <td>
-              <% safe_url = safe_job_link(app) %>
-              <% if safe_url.present? %>
-                <%= link_to "View Job", safe_url, target: "_blank", rel: "noopener noreferrer" %>
-              <% else %>
-                <span class="text-gray-500">No valid link</span>
-              <% end %>
-            </td>
-            <td>
-              <div class="tech-stacks-container" data-app-id="<%= app.id %>">
-                <div class="tech-stacks-display">
-                  <% app.tech_stacks.each do |tech| %>
-                    <span class="tech-tag">
-                      <%= tech.name %>
+        <% if @job_applications.any? %>
+          <% @job_applications.each do |app| %>
+            <tr data-id="<%= app.id %>">
+              <td>
+                <%= app.date_applied&.strftime("%Y-%m-%d") %>
+              </td>
+              <td>
+                <%= app.company_name %>
+              </td>
+              <td>
+                <% safe_url = safe_job_link(app) %>
+                <% if safe_url.present? %>
+                  <%= link_to "View Job", safe_url, target: "_blank", rel: "noopener noreferrer" %>
+                <% else %>
+                  <span class="text-gray-500">No valid link</span>
+                <% end %>
+              </td>
+              <td>
+                <div class="tech-stacks-container" data-app-id="<%= app.id %>">
+                  <div class="tech-stacks-display">
+                    <% app.tech_stacks.each do |tech| %>
+                      <span class="tech-tag">
+                        <%= tech.name %>
+                      </span>
+                    <% end %>
+                  </div>
+                  <select class="tech-stacks-select hidden form-select" multiple>
+                    <% @tech_stacks.each do |tech| %>
+                      <option value="<%= tech.name %>" <%= 'selected' if app.tech_stacks.include?(tech) %>>
+                        <%= tech.name %>
+                      </option>
+                    <% end %>
+                    <option value="__new__">+ Add New Tech Stack</option>
+                  </select>
+                </div>
+              </td>
+              <td>
+                <div class="status-container" data-app-id="<%= app.id %>">
+                  <div class="status-display">
+                    <span class="status-badge">
+                      <%= app.application_status.name %>
                     </span>
-                  <% end %>
+                  </div>
+                  <select class="status-select hidden form-select">
+                    <% @application_statuses.each do |status| %>
+                      <option value="<%= status.id %>" <%= 'selected' if app.application_status == status %>>
+                        <%= status.name %>
+                      </option>
+                    <% end %>
+                    <option value="__new__">+ Add New Status</option>
+                  </select>
                 </div>
-                <select class="tech-stacks-select hidden form-select" multiple>
-                  <% @tech_stacks.each do |tech| %>
-                    <option value="<%= tech.name %>" <%= 'selected' if app.tech_stacks.include?(tech) %>>
-                      <%= tech.name %>
-                    </option>
-                  <% end %>
-                  <option value="__new__">+ Add New Tech Stack</option>
-                </select>
-              </div>
-            </td>
-            <td>
-              <div class="status-container" data-app-id="<%= app.id %>">
-                <div class="status-display">
-                  <span class="status-badge">
-                    <%= app.application_status.name %>
-                  </span>
+              </td>
+              <td>
+                <div class="space-x-2">
+                  <button class="edit-row">Edit</button>
+                  <button class="save-row hidden">Save</button>
+                  <button class="cancel-row hidden">Cancel</button>
+                  <button class="delete-row" data-app-id="<%= app.id %>" data-app-name="<%= app.company_name %>">Delete</button>
                 </div>
-                <select class="status-select hidden form-select">
-                  <% @application_statuses.each do |status| %>
-                    <option value="<%= status.id %>" <%= 'selected' if app.application_status == status %>>
-                      <%= status.name %>
-                    </option>
-                  <% end %>
-                  <option value="__new__">+ Add New Status</option>
-                </select>
-              </div>
-            </td>
-            <td>
-              <div class="space-x-2">
-                <button class="edit-row">Edit</button>
-                <button class="save-row hidden">Save</button>
-                <button class="cancel-row hidden">Cancel</button>
-                <%= link_to "Delete", job_application_path(app), method: :delete, 
-                    data: { confirm: "Are you sure?" }, 
-                    class: "btn-danger" %>
+              </td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="6" class="empty-state">
+              <div class="empty-state-content">
+                <div class="empty-state-icon">📋</div>
+                <h3>No job applications yet</h3>
+                <p>Start tracking your job applications by adding your first one.</p>
+                <%= link_to "Add Your First Application", new_job_application_path, class: "btn btn-primary" %>
               </div>
             </td>
           </tr>
@@ -118,6 +129,18 @@
   </div>
 </div>
 
+<!-- Modal for delete confirmation -->
+<div id="delete-confirmation-modal" class="modal hidden">
+  <div class="modal-content">
+    <h3>Confirm Delete</h3>
+    <p id="delete-message">Are you sure you want to delete this job application?</p>
+    <div class="flex space-x-2">
+      <button id="cancel-delete" class="btn btn-secondary">Cancel</button>
+      <button id="confirm-delete" class="btn btn-danger">Delete</button>
+    </div>
+  </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   // Edit row functionality
@@ -128,6 +151,8 @@ document.addEventListener('DOMContentLoaded', function() {
       saveRow(e.target.closest('tr'))
     } else if (e.target.classList.contains('cancel-row')) {
       cancelRow(e.target.closest('tr'))
+    } else if (e.target.classList.contains('delete-row')) {
+      showDeleteConfirmation(e.target)
     }
   })
 
@@ -419,5 +444,76 @@ document.addEventListener('DOMContentLoaded', function() {
       alert('Error creating tech stack: ' + error.message)
     })
   }
+
+  // Delete functionality
+  let deleteAppId = null
+
+  function showDeleteConfirmation(deleteButton) {
+    const appId = deleteButton.dataset.appId
+    const appName = deleteButton.dataset.appName
+    deleteAppId = appId
+    
+    document.getElementById('delete-message').textContent = `Are you sure you want to delete the job application for "${appName}"?`
+    document.getElementById('delete-confirmation-modal').classList.remove('hidden')
+  }
+
+  function deleteJobApplication() {
+    if (!deleteAppId) return
+
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                     document.querySelector('[name="csrf-token"]')?.content
+
+    if (!csrfToken) {
+      alert('CSRF token not found. Please refresh the page and try again.')
+      return
+    }
+
+    fetch(`/job_applications/${deleteAppId}`, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRF-Token': csrfToken,
+        'Accept': 'application/json'
+      }
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      return response.json()
+    })
+    .then(data => {
+      if (data.success) {
+        // Remove the row from the table
+        const row = document.querySelector(`tr[data-id="${deleteAppId}"]`)
+        if (row) {
+          row.remove()
+        }
+        document.getElementById('delete-confirmation-modal').classList.add('hidden')
+        deleteAppId = null
+      } else {
+        alert('Error deleting application: ' + (data.error || 'Unknown error'))
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error)
+      alert('Error deleting application: ' + error.message)
+    })
+  }
+
+  // Add delete modal event listeners
+  document.getElementById('confirm-delete').addEventListener('click', deleteJobApplication)
+  
+  document.getElementById('cancel-delete').addEventListener('click', function() {
+    document.getElementById('delete-confirmation-modal').classList.add('hidden')
+    deleteAppId = null
+  })
+
+  document.getElementById('delete-confirmation-modal').addEventListener('click', function(e) {
+    if (e.target.id === 'delete-confirmation-modal') {
+      document.getElementById('delete-confirmation-modal').classList.add('hidden')
+      deleteAppId = null
+    }
+  })
 })
 </script> 
