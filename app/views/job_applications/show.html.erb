@@ -22,7 +22,12 @@
       <div>
         <h3>Job Link</h3>
         <p>
-          <%= link_to @job_application.job_link, @job_application.job_link, target: "_blank" %>
+          <% safe_url = safe_job_link(@job_application) %>
+          <% if safe_url.present? %>
+            <%= link_to "View Job", safe_url, target: "_blank", rel: "noopener noreferrer" %>
+          <% else %>
+            <span class="text-gray-500">No valid link provided</span>
+          <% end %>
         </p>
       </div>
 

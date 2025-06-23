@@ -8,8 +8,8 @@ class CreateJobApplications < ActiveRecord::Migration[7.2]
 
       t.timestamps
     end
-    
+
     add_index :job_applications, :date_applied
     add_index :job_applications, :company_name
   end
-end 
+end

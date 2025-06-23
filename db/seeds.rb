@@ -9,7 +9,7 @@
 #   end
 
 # Create initial application statuses
-statuses = ['applied', 'intro', 'tech', 'culture', 'final']
+statuses = [ 'applied', 'intro', 'tech', 'culture', 'final' ]
 statuses.each do |status_name|
   ApplicationStatus.find_or_create_by(name: status_name)
 end
