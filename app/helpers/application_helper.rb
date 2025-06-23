@@ -1,13 +1,19 @@
 module ApplicationHelper
   def safe_job_link(job_application)
-    return nil unless job_application.job_link.present?
+    return nil unless job_application&.job_link.present?
 
-    # Basic URL validation
-    uri = URI.parse(job_application.job_link)
-    return nil unless %w[http https].include?(uri.scheme)
+    # Basic URL validation and sanitization
+    begin
+      uri = URI.parse(job_application.job_link.strip)
+      return nil unless %w[http https].include?(uri.scheme)
 
-    job_application.job_link
-  rescue URI::InvalidURIError
-    nil
+      # Additional security checks
+      return nil if uri.host.nil? || uri.host.empty?
+
+      # Return the validated URL
+      job_application.job_link.strip
+    rescue URI::InvalidURIError, ArgumentError
+      nil
+    end
   end
 end
